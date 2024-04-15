@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "soma_integ"
+version = "0.0.1"
+dependencies = [
+    "numpy",
+    "sklearn",
+    "torch"
+]
+authors = [
+    { name = "Sobhan Ahmadian Moghadam", email = "sobhan.ahmadian.moghadam@gmail.com" },
+    { name = "Arman Rezaei", email = "arman.x.rezaei@gmail.com" },
+]
+description = "A package for integrating implementation and evaluation of machine learning platforms"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/pypa/sampleproject"      # TODO
+Issues = "https://github.com/pypa/sampleproject/issues" # TODO
