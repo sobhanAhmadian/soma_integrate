@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "soma_integ"
-version = "0.0.1"
-dependencies = ["numpy", "sklearn", "torch"]
+version = "0.0.2"
+dependencies = ["numpy", "sklearn"]
 authors = [
     { name = "Sobhan Ahmadian Moghadam", email = "sobhan.ahmadian.moghadam@gmail.com" },
     { name = "Arman Rezaei", email = "arman.x.rezaei@gmail.com" },
@@ -19,6 +19,9 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
+[project.optional-dependencies]
+ML = ["torch"]
+
 [project.urls]
-Homepage = "https://github.com/sobhanAhmadian/soma_integrate"      # TODO
-Issues = "https://github.com/sobhanAhmadian/soma_integrate/issues" # TODO
+Homepage = "https://github.com/sobhanAhmadian/soma_integrate"
+Issues = "https://github.com/sobhanAhmadian/soma_integrate/issues"
