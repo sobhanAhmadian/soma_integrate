@@ -5,7 +5,7 @@ from .utils import logging as base_logger
 logger = base_logger.getLogger(__name__)
 
 
-class BaseModel(abc.ABC):
+class ModelHandler(abc.ABC):
     def __init__(self, model_config) -> None:
         self.model_config = model_config
         self.model = None
@@ -24,7 +24,7 @@ class BaseModel(abc.ABC):
         raise NotImplementedError
 
 
-class ModelFactory(abc.ABC):
+class HandlerFactory(abc.ABC):
     @abc.abstractmethod
-    def make_model(self) -> BaseModel:
+    def make_model(self) -> ModelHandler:
         raise NotImplementedError

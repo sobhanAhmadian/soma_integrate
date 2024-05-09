@@ -1,4 +1,6 @@
 import abc
+import random
+
 import torch
 
 from .utils import logging as base_logger
@@ -26,14 +28,16 @@ class TrainTestSpliter(abc.ABC):
 
     @abc.abstractmethod
     def split(self, i):  # Return Train and Test Data
-        logger.info(f'splitting {i}th fold')
+        logger.info(f"splitting {i}th fold")
         raise NotImplementedError
 
 
 class SimplePytorchData(Data):
     def __init__(self, X: torch.Tensor, y: torch.Tensor, **kwargs) -> None:
         super().__init__(**kwargs)
-        logger.info(f'Initializing SimplePytorchData with X shape : {X.shape} and y shape : {y.shape}')
+        logger.info(
+            f"Initializing SimplePytorchData with X shape : {X.shape} and y shape : {y.shape}"
+        )
         self.X = X
         self.y = y
 
@@ -53,7 +57,7 @@ class SimplePytorchDataTrainTestSpliter(TrainTestSpliter):
 
     def __init__(self, k, simple_data):
         super().__init__(k)
-        logger.info(f'Initializing SimplePytorchDataTrainTestSpliter')
+        logger.info(f"Initializing SimplePytorchDataTrainTestSpliter")
         self.X = simple_data.X
         self.y = simple_data.y
 
