@@ -26,5 +26,5 @@ class ModelHandler(abc.ABC):
 
 class HandlerFactory(abc.ABC):
     @abc.abstractmethod
-    def make_model(self) -> ModelHandler:
+    def create_handler(self) -> ModelHandler:
         raise NotImplementedError

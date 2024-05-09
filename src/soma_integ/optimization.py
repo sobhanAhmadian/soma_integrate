@@ -1,6 +1,5 @@
 import abc
 import os.path
-import random
 
 import torch
 from torch.utils.data import DataLoader, TensorDataset
@@ -16,19 +15,23 @@ logger = base_logger.getLogger(__name__)
 
 class Trainer(abc.ABC):
     @abc.abstractmethod
-    def train(self, model: ModelHandler, data: Data, config: OptimizerConfig) -> Result:
+    def train(
+        self, model_handler: ModelHandler, data: Data, config: OptimizerConfig
+    ) -> Result:
         raise NotImplementedError
 
 
 class Tester(abc.ABC):
     @abc.abstractmethod
-    def test(self, model: ModelHandler, data: Data, config: OptimizerConfig) -> Result:
+    def test(
+        self, model_handler: ModelHandler, data: Data, config: OptimizerConfig
+    ) -> Result:
         raise NotImplementedError
 
 
 def cross_validation(
     train_test_spliter: TrainTestSpliter,
-    model_factory: HandlerFactory,
+    handler_factory: HandlerFactory,
     trainer: Trainer,
     tester: Tester,
     config: OptimizerConfig,
@@ -42,11 +45,11 @@ def cross_validation(
 
         train_data, test_data = train_test_spliter.split(i)
 
-        model = model_factory.make_model()
-        trainer.train(model=model, data=train_data, config=config)
-        test_result = tester.test(model=model, data=test_data, config=config)
+        handler = handler_factory.create_handler()
+        trainer.train(model_handler=handler, data=train_data, config=config)
+        test_result = tester.test(model_handler=handler, data=test_data, config=config)
         logger.info(f"Result of fold {i + 1} : {test_result.get_result()}")
-        model.destroy()
+        handler.destroy()
 
         result.add(test_result)
 
@@ -59,13 +62,26 @@ def cross_validation(
     return result
 
 
+def _predict_error(X, loss_function, model_handler: ModelHandler, running_loss, y):
+    pred = model_handler.model(X)
+    loss = loss_function(pred, y)
+    running_loss += loss.item()
+    return loss, running_loss
+
+
+def _backpropagation(loss, optimizer):
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+
+
 def _batch_optimize(
     loader,
-    model,
+    model_handler: ModelHandler,
     config: OptimizerConfig,
 ):
-    model.classifier.train()
-    optimizer = config.optimizer(model.classifier.parameters(), lr=config.lr)
+    model_handler.model.train()
+    optimizer = config.optimizer(model_handler.model.parameters(), lr=config.lr)
 
     for epoch in range(config.n_epoch):
         running_loss = 0.0
@@ -73,7 +89,7 @@ def _batch_optimize(
             X, y = data
 
             loss, running_loss = _predict_error(
-                X, config.criterion, model, running_loss, y
+                X, config.criterion, model_handler, running_loss, y
             )
             _backpropagation(loss, optimizer)
 
@@ -85,22 +101,9 @@ def _batch_optimize(
         if config.save:
             if epoch % 5 == 0 or epoch == config.n_epoch - 1:
                 m = os.path.join(
-                    config.save_path, model.model_config.model_name + ".pth"
+                    config.save_path, model_handler.model_config.model_name + ".pth"
                 )
-                torch.save(model.classifier.state_dict(), m)
-
-
-def _predict_error(X, loss_function, model, running_loss, y):
-    pred = model.classifier(X)
-    loss = loss_function(pred, y)
-    running_loss += loss.item()
-    return loss, running_loss
-
-
-def _backpropagation(loss, optimizer):
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
+                torch.save(model_handler.classifier.state_dict(), m)
 
 
 def _evaluate(model: ModelHandler, loader, config: OptimizerConfig):
@@ -119,38 +122,41 @@ def _evaluate(model: ModelHandler, loader, config: OptimizerConfig):
     return result
 
 
-class SimpleTrainer(Trainer):
+class SimplePytorchTrainer(Trainer):
     def train(
-        self, model: ModelHandler, data: SimplePytorchData, config: OptimizerConfig
+        self,
+        model_handler: ModelHandler,
+        data: SimplePytorchData,
+        config: OptimizerConfig,
     ) -> Result:
         logger.info(f"Running Simple Trainer with config : {config.exp_name}")
 
         logger.info(f"moving data and model to {config.device}")
-        model.classifier = model.classifier.to(config.device)
+        model_handler.model = model_handler.model.to(config.device)
         dataset = TensorDataset(data.X.to(config.device), data.y.to(config.device))
         loader = DataLoader(dataset, batch_size=config.batch_size, shuffle=True)
 
-        _batch_optimize(loader, model, config)
-        result = _evaluate(model, loader, config)
+        _batch_optimize(loader, model_handler, config)
+        result = _evaluate(model_handler, loader, config)
 
         logger.info(f"Result on Train Data : {result.get_result()}")
         return result
 
 
-class SimpleTester(Tester):
+class SimplePytorchTester(Tester):
     def test(
         self,
-        model: ModelHandler,
+        model_handler: ModelHandler,
         data: SimplePytorchData,
         config: OptimizerConfig = None,
     ) -> Result:
         logger.info(f"Running Simple Tester with config : {config.exp_name}")
 
         logger.info(f"moving data and model to {config.device}")
-        model.classifier = model.classifier.to(config.device)
+        model_handler.model = model_handler.model.to(config.device)
         dataset = TensorDataset(data.X.to(config.device), data.y.to(config.device))
         loader = DataLoader(dataset, batch_size=config.batch_size, shuffle=True)
-        result = _evaluate(model, loader, config)
+        result = _evaluate(model_handler, loader, config)
 
         logger.info(f"Result on Test Data : {result.get_result()}")
         return result

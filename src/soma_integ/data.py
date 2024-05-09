@@ -53,7 +53,7 @@ class SimplePytorchData(Data):
         return self.y[indices], self.y[indices]
 
 
-class SimplePytorchDataTrainTestSpliter(TrainTestSpliter):
+class SimplePytorchTrainTestSpliter(TrainTestSpliter):
 
     def __init__(self, k, simple_data):
         super().__init__(k)
