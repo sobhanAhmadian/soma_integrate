@@ -5,7 +5,7 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset
 
 from .config import OptimizerConfig
-from .data import Data, SimplePytorchData, TrainTestSpliter
+from .data import Data, PytorchData, TrainTestSplitter
 from .evaluation import Result, get_prediction_results
 from .model import HandlerFactory, ModelHandler
 from .utils import logging as base_logger
@@ -30,7 +30,7 @@ class Tester(abc.ABC):
 
 
 def cross_validation(
-    train_test_spliter: TrainTestSpliter,
+    train_test_spliter: TrainTestSplitter,
     handler_factory: HandlerFactory,
     trainer: Trainer,
     tester: Tester,
@@ -126,7 +126,7 @@ class SimplePytorchTrainer(Trainer):
     def train(
         self,
         model_handler: ModelHandler,
-        data: SimplePytorchData,
+        data: PytorchData,
         config: OptimizerConfig,
     ) -> Result:
         logger.info(f"Running Simple Trainer with config : {config.exp_name}")
@@ -147,7 +147,7 @@ class SimplePytorchTester(Tester):
     def test(
         self,
         model_handler: ModelHandler,
-        data: SimplePytorchData,
+        data: PytorchData,
         config: OptimizerConfig = None,
     ) -> Result:
         logger.info(f"Running Simple Tester with config : {config.exp_name}")

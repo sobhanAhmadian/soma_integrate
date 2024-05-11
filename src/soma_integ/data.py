@@ -9,75 +9,121 @@ logger = base_logger.getLogger(__name__)
 
 
 class Data(abc.ABC):
+    """
+    Abstract base class for data objects.
+    """
+
     def __init__(self, **kwargs) -> None:
         super().__init__()
 
-    @abc.abstractmethod
-    def extend(self, **kwargs):
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def subset(self, indices) -> tuple:
+    def __len__(self):
         raise NotImplementedError
 
 
-class TrainTestSpliter(abc.ABC):
+class TrainTestSplitter(abc.ABC):
+    """
+    Abstract base class for train-test splitters in cross-validation.
 
-    def __init__(self, k):
+    Args:
+        k (int): number of folds.
+        data (Data): data object.
+    """
+
+    def __init__(self, k: int, data: Data):
         self.k = k
+        self.data = data
+        self.subsets = self.get_subsets()
 
     @abc.abstractmethod
-    def split(self, i):  # Return Train and Test Data
-        logger.info(f"splitting {i}th fold")
+    def split(self, i):
+        """
+        Split the data into train and test sets for the i-th fold.
+
+        Args:
+            i (int): The index of the fold.
+
+        Returns:
+            tuple: A tuple containing the train and test data. <train_data, test_data>
+        """
+        logger.info("{:#^50}".format(f"  Splitting Fold {i + 1}   "))
         raise NotImplementedError
 
+    def get_subsets(self):
+        """
+        Generate subsets of data.
 
-class SimplePytorchData(Data):
-    def __init__(self, X: torch.Tensor, y: torch.Tensor, **kwargs) -> None:
-        super().__init__(**kwargs)
-        logger.info(
-            f"Initializing SimplePytorchData with X shape : {X.shape} and y shape : {y.shape}"
-        )
-        self.X = X
-        self.y = y
-
-    def extend(self, X: torch.Tensor, y: torch.Tensor):
-        if self.X is None or self.y is None:
-            self.X = X
-            self.y = y
-        else:
-            self.X = torch.cat((self.X, X), 0)
-            self.y = torch.cat((self.y, y), 0)
-
-    def subset(self, indices) -> tuple:
-        return self.y[indices], self.y[indices]
-
-
-class SimplePytorchTrainTestSpliter(TrainTestSpliter):
-
-    def __init__(self, k, simple_data):
-        super().__init__(k)
-        logger.info(f"Initializing SimplePytorchDataTrainTestSpliter")
-        self.X = simple_data.X
-        self.y = simple_data.y
-
-        self.data_size = simple_data.X.shape[0]
-
+        Returns:
+            dict: A dictionary containing subsets of data, where the keys represent the subset index and the values
+                    represent the indices of the elements in the subset.
+        """
         subsets = dict()
-        subset_size = int(self.data_size / self.k)
-        remain = set(range(0, self.data_size))
+        subset_size = int(len(self.data) / self.k)
+        remain = set(range(0, len(self.data)))
         for i in range(self.k - 1):
             subsets[i] = random.sample(remain, subset_size)
             remain = remain.difference(subsets[i])
-        subsets[k - 1] = remain
+        subsets[self.k - 1] = remain
+        return subsets
 
-        self.subsets = subsets
+
+class PytorchData(Data):
+    """
+    A class representing PyTorch data.
+
+    Attributes:
+        X (torch.Tensor): The input data.
+        y (torch.Tensor): The target data.
+
+    Args:
+        X (torch.Tensor): The input data.
+        y (torch.Tensor): The target data.
+        **kwargs: Additional keyword arguments.
+
+    """
+
+    def __init__(self, X: torch.Tensor, y: torch.Tensor, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.X = X
+        self.y = y
+
+    def __len__(self):
+        return self.X.shape[0]
+
+
+class PytorchTrainTestSplitter(TrainTestSplitter):
+    """
+    A class that splits PyTorch data into train and test sets.
+
+    Args:
+        k (int): The number of subsets to create during the split.
+        data (PytorchData): The PyTorch data object to be split.
+
+    Attributes:
+        k (int): The number of subsets to create during the split.
+        data (PytorchData): The PyTorch data object to be split.
+
+    Methods:
+        split(i): Splits the data into train and test sets based on the i-th subset.
+    """
+
+    def __init__(self, k: int, data: PytorchData):
+        super().__init__(k, data)
 
     def split(self, i):
-        indices = set(range(0, self.data_size))
+        """
+        Splits the data into train and test sets based on the i-th subset.
+
+        Args:
+            i (int): The index of the subset to use for the test set.
+
+        Returns:
+            tuple: A tuple containing the train and test data objects.
+
+        """
+        indices = set(range(0, len(self.data)))
         test_indices = list(self.subsets[i])
         train_indices = list(indices.difference(self.subsets[i]))
 
-        train_data = SimplePytorchData(self.X[train_indices], self.y[train_indices])
-        test_data = SimplePytorchData(self.X[test_indices], self.y[test_indices])
+        train_data = PytorchData(self.data.X[train_indices], self.data.y[train_indices])
+        test_data = PytorchData(self.data.X[test_indices], self.data.y[test_indices])
         return train_data, test_data
