@@ -14,18 +14,60 @@ logger = base_logger.getLogger(__name__)
 
 
 class Trainer(abc.ABC):
+    """Abstract base class for trainers.
+    Trainers are responsible for training a model using a given dataset and configuration.
+
+    Methods:
+        train: Abstract method for training a model.
+    """
+
     @abc.abstractmethod
     def train(
         self, model_handler: ModelHandler, data: Data, config: OptimizerConfig
     ) -> Result:
+        """
+        Train the model using the given dataset and configuration.
+
+        Args:
+            model_handler (ModelHandler): The model handler object.
+            data (Data): The dataset object.
+            config (OptimizerConfig): The configuration object.
+
+        Returns:
+            Result: The result of the training process.
+
+        Raises:
+            NotImplementedError: If the method is not implemented by the subclass.
+        """
         raise NotImplementedError
 
 
 class Tester(abc.ABC):
+    """Abstract base class for testers.
+    Testers are responsible for testing a model using a given dataset and configuration.
+
+    Methods:
+        test: Abstract method for testing a model.
+    """
+
     @abc.abstractmethod
     def test(
         self, model_handler: ModelHandler, data: Data, config: OptimizerConfig
     ) -> Result:
+        """
+        Abstract method to perform testing.
+
+        Args:
+            model_handler (ModelHandler): The model handler object.
+            data (Data): The data object.
+            config (OptimizerConfig): The optimizer configuration object.
+
+        Returns:
+            Result: The result of the testing.
+
+        Raises:
+            NotImplementedError: If the method is not implemented by the subclass.
+        """
         raise NotImplementedError
 
 
@@ -36,30 +78,49 @@ def cross_validation(
     tester: Tester,
     config: OptimizerConfig,
 ) -> Result:
-    k = train_test_spliter.k
-    logger.info(f"Start {k}-fold Cross Validation with config : {config.exp_name}")
+    """
+    Perform k-fold cross validation using the given components and configuration.
 
+    Args:
+        train_test_spliter (TrainTestSplitter): The train-test splitter object.
+        handler_factory (HandlerFactory): The handler factory object.
+        trainer (Trainer): The trainer object.
+        tester (Tester): The tester object.
+        config (OptimizerConfig): The optimizer configuration object.
+
+    Returns:
+        Tuple[Result, List[Result]]: A tuple containing the overall result and a list of individual fold results.
+    """
+    
+    k = train_test_spliter.k
+    logger.info(f"Start {k}-fold Cross Validation with config: {config.exp_name}")
+
+    fold_results = []
     result = Result()
     for i in range(k):
-        logger.info(f"---- Fold {i + 1} ----")
+        logger.info("{:#^50}".format(f"   Fold {i + 1}   "))
 
         train_data, test_data = train_test_spliter.split(i)
 
-        handler = handler_factory.create_handler()
-        trainer.train(model_handler=handler, data=train_data, config=config)
-        test_result = tester.test(model_handler=handler, data=test_data, config=config)
+        model_handler = handler_factory.create_handler()
+        trainer.train(model_handler=model_handler, data=train_data, config=config)
+        test_result = tester.test(
+            model_handler=model_handler, data=test_data, config=config
+        )
         logger.info(f"Result of fold {i + 1} : {test_result.get_result()}")
-        handler.destroy()
+        model_handler.destroy()
 
         result.add(test_result)
+        fold_results.append(test_result)
 
     result.divide(k=k)
 
+    logger.info("{:#^50}".format(f"   {k}-fold Result  "))
     logger.info(
-        f"{k}-fold result: avg_auc: {result.auc}, avg_acc: {result.acc}, avg_f1: {result.f1}, avg_aupr: {result.aupr}"
+        f"Average AUC: {result.auc:.2f}, Average ACC: {result.acc:.2f}, Average F1 Score: {result.f1:.2f}, Average AUPR: {result.aupr:.2f}"
     )
 
-    return result
+    return result, fold_results
 
 
 def _predict_error(X, loss_function, model_handler: ModelHandler, running_loss, y):
@@ -122,40 +183,62 @@ def _evaluate(model: ModelHandler, loader, config: OptimizerConfig):
     return result
 
 
-class SimplePytorchTrainer(Trainer):
+class PytorchTrainer(Trainer):
     def train(
         self,
         model_handler: ModelHandler,
         data: PytorchData,
         config: OptimizerConfig,
     ) -> Result:
-        logger.info(f"Running Simple Trainer with config : {config.exp_name}")
+        """
+        Trains the Pytorch model using the provided data and configuration.
 
-        logger.info(f"moving data and model to {config.device}")
+        Args:
+            model_handler (ModelHandler): The model handler object with a PyTorch model.
+            data (PytorchData): The PyTorch data object containing the training data.
+            config (OptimizerConfig): The configuration object for the optimizer.
+
+        Returns:
+            Result: The result of the training process.
+        """
+        logger.info("{:#^50}".format(f"   Running PyTorch Trainer : {config.exp_name}  "))
+
         model_handler.model = model_handler.model.to(config.device)
         dataset = TensorDataset(data.X.to(config.device), data.y.to(config.device))
         loader = DataLoader(dataset, batch_size=config.batch_size, shuffle=True)
+        logger.info(f"Model and data moved to {config.device}")
 
         _batch_optimize(loader, model_handler, config)
         result = _evaluate(model_handler, loader, config)
 
-        logger.info(f"Result on Train Data : {result.get_result()}")
+        logger.info(f"Result on Train Data: {result.get_result()}")
         return result
 
 
-class SimplePytorchTester(Tester):
+class PytorchTester(Tester):
     def test(
         self,
         model_handler: ModelHandler,
         data: PytorchData,
-        config: OptimizerConfig = None,
+        config: OptimizerConfig,
     ) -> Result:
-        logger.info(f"Running Simple Tester with config : {config.exp_name}")
+        """Run the PyTorch Tester on the given model and data.
 
-        logger.info(f"moving data and model to {config.device}")
+        Args:
+            model_handler (ModelHandler): The model handler object.
+            data (PytorchData): The PyTorch data object.
+            config (OptimizerConfig): The optimizer configuration object.
+
+        Returns:
+            Result: The result of the test.
+        """
+        logger.info("{:#^50}".format(f"   Running PyTorch Tester : {config.exp_name}  "))
+
         model_handler.model = model_handler.model.to(config.device)
         dataset = TensorDataset(data.X.to(config.device), data.y.to(config.device))
         loader = DataLoader(dataset, batch_size=config.batch_size, shuffle=True)
+        logger.info(f"Model and data moved to {config.device}")
+
         result = _evaluate(model_handler, loader, config)
 
         logger.info(f"Result on Test Data : {result.get_result()}")
