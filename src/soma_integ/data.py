@@ -58,10 +58,10 @@ class TrainTestSplitter(abc.ABC):
         """
         subsets = dict()
         subset_size = int(len(self.data) / self.k)
-        remain = set(range(0, len(self.data)))
+        remain = list(range(0, len(self.data)))
         for i in range(self.k - 1):
             subsets[i] = random.sample(remain, subset_size)
-            remain = remain.difference(subsets[i])
+            remain = list(set(remain).difference(subsets[i]))
         subsets[self.k - 1] = remain
         return subsets
 
