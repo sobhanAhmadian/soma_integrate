@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from .config import OptimizerConfig
 from .data import Data, PytorchData, TrainTestSplitter
-from .evaluation import Result, get_prediction_results
+from .evaluation import CrossValidationResult, Result, evaluate_binary_classification
 from .model import HandlerFactory, ModelHandler
 from .utils import logging as base_logger
 
@@ -77,7 +77,7 @@ def cross_validation(
     trainer: Trainer,
     tester: Tester,
     config: OptimizerConfig,
-) -> Result:
+) -> CrossValidationResult:
     """
     Perform k-fold cross validation using the given components and configuration.
 
@@ -89,14 +89,13 @@ def cross_validation(
         config (OptimizerConfig): The optimizer configuration object.
 
     Returns:
-        Tuple[Result, List[Result]]: A tuple containing the overall result and a list of individual fold results.
+        CrossValidationResult: The result of the cross-validation.
     """
-    
+
     k = train_test_spliter.k
     logger.info(f"Start {k}-fold Cross Validation with config: {config.exp_name}")
 
-    fold_results = []
-    result = Result()
+    cv_result = CrossValidationResult()
     for i in range(k):
         logger.info("{:#^50}".format(f"   Fold {i + 1}   "))
 
@@ -110,17 +109,16 @@ def cross_validation(
         logger.info(f"Result of fold {i + 1} : {test_result.get_result()}")
         model_handler.destroy()
 
-        result.add(test_result)
-        fold_results.append(test_result)
+        cv_result.add_fold_result(test_result)
 
-    result.divide(k=k)
+    cv_result.calculate_cv_result()
 
     logger.info("{:#^50}".format(f"   {k}-fold Result  "))
     logger.info(
-        f"Average AUC: {result.auc:.2f}, Average ACC: {result.acc:.2f}, Average F1 Score: {result.f1:.2f}, Average AUPR: {result.aupr:.2f}"
+        f"Result of {k}-fold Cross Validation : {cv_result.result.get_result()}"
     )
 
-    return result, fold_results
+    return cv_result
 
 
 def _predict_error(X, loss_function, model_handler: ModelHandler, running_loss, y):
@@ -178,7 +176,9 @@ def _evaluate(model: ModelHandler, loader, config: OptimizerConfig):
         total_loss += config.criterion(outputs, labels).item()
         total_labels.extend(labels.cpu().numpy())
         total_predictions.extend(torch.sigmoid(outputs).cpu().numpy())
-    result = get_prediction_results(total_labels, total_predictions, config.threshold)
+    result = evaluate_binary_classification(
+        total_labels, total_predictions, config.threshold
+    )
     result.loss = total_loss / len(loader)
     return result
 
@@ -201,7 +201,9 @@ class PytorchTrainer(Trainer):
         Returns:
             Result: The result of the training process.
         """
-        logger.info("{:#^50}".format(f"   Running PyTorch Trainer : {config.exp_name}  "))
+        logger.info(
+            "{:#^50}".format(f"   Running PyTorch Trainer : {config.exp_name}  ")
+        )
 
         model_handler.model = model_handler.model.to(config.device)
         dataset = TensorDataset(data.X.to(config.device), data.y.to(config.device))
@@ -232,7 +234,9 @@ class PytorchTester(Tester):
         Returns:
             Result: The result of the test.
         """
-        logger.info("{:#^50}".format(f"   Running PyTorch Tester : {config.exp_name}  "))
+        logger.info(
+            "{:#^50}".format(f"   Running PyTorch Tester : {config.exp_name}  ")
+        )
 
         model_handler.model = model_handler.model.to(config.device)
         dataset = TensorDataset(data.X.to(config.device), data.y.to(config.device))
