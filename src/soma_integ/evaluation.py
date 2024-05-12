@@ -27,8 +27,6 @@ class Result:
         precision (float): The precision value.
         mcc (float): The Matthews Correlation Coefficient (MCC) value.
         max_f1 (float): The maximum F1 score value for different thresholds.
-        tpr (float): The True Positive Rate (TPR) value.
-        fpr (float): The False Positive Rate (FPR) value.
         fpr_list (list): The list of False Positive Rate values for different thresholds.
         tpr_list (list): The list of True Positive Rate values for different thresholds.
         auc_list (list): The list of AUC values for different thresholds.
@@ -49,8 +47,6 @@ class Result:
         self.precision = 0
         self.mcc = 0
         self.max_f1 = 0
-        self.tpr = 0
-        self.fpr = 0
         self.fpr_list = []
         self.tpr_list = []
         self.auc_list = []
@@ -131,8 +127,6 @@ class CrossValidationResult:
         self.result.precision = self.result.precision / k
         self.result.mcc = self.result.mcc / k
         self.result.max_f1 = self.result.max_f1 / k
-        self.result.tpr = self.result.tpr / k
-        self.result.fpr = self.result.fpr / k
         self.result.fpr_list = (np.array(self.result.fpr_list) / k).tolist()
         self.result.tpr_list = (np.array(self.result.tpr_list) / k).tolist()
         self.result.auc_list = (np.array(self.result.auc_list) / k).tolist()
@@ -153,17 +147,22 @@ class CrossValidationResult:
         self.result.precision += test_result.precision
         self.result.mcc += test_result.mcc
         self.result.max_f1 += test_result.max_f1
-        self.result.tpr += test_result.tpr
-        self.result.fpr += test_result.fpr
+
         self.result.fpr_list = (
-            np.array(self.result.fpr_list) + np.array(test_result.fpr_list)
-        ).tolist()
+            (np.array(self.result.fpr_list) + np.array(test_result.fpr_list)).tolist()
+            if len(self.result.fpr_list) > 0
+            else test_result.fpr_list
+        )
         self.result.tpr_list = (
-            np.array(self.result.tpr_list) + np.array(test_result.tpr_list)
-        ).tolist()
+            (np.array(self.result.tpr_list) + np.array(test_result.tpr_list)).tolist()
+            if len(self.result.tpr_list) > 0
+            else test_result.tpr_list
+        )
         self.result.auc_list = (
-            np.array(self.result.auc_list) + np.array(test_result.auc_list)
-        ).tolist()
+            (np.array(self.result.auc_list) + np.array(test_result.auc_list)).tolist()
+            if len(self.result.auc_list) > 0
+            else test_result.auc_list
+        )
 
     def get_roc_curve(self, ax):
         """
@@ -257,8 +256,6 @@ def evaluate_binary_classification(
     # Calculate AUC, TPR, FPR
     fpr, tpr, _ = roc_curve(y_test, y_predict, pos_label=1)
     result.auc = auc(fpr, tpr)
-    result.tpr = tpr
-    result.fpr = fpr
 
     # Calculate FPR, TPR and AUC Lists
     viz = RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=result.auc)
