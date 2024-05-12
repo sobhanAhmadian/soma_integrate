@@ -41,14 +41,14 @@ class ModelHandler(abc.ABC):
         """
         raise NotImplementedError
 
-    @abs.abstractmethod
+    @abc.abstractmethod
     def _build_model(self):
         """
         Builds the model.
         """
         raise NotImplementedError
 
-    @abs.abstractmethod
+    @abc.abstractmethod
     def _build_feature_extractor(self):
         """
         Builds the feature extractor.
