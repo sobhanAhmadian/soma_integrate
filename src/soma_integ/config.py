@@ -6,10 +6,6 @@ class Config(abc.ABC):
     def get_configuration(self):
         pass
 
-    @abc.abstractmethod
-    def get_summary(self):
-        pass
-
 
 class ModelConfig(Config):
     def __init__(self):
@@ -22,12 +18,7 @@ class ModelConfig(Config):
         return {
             "model_name": self.model_name,
             "embed_dim": self.embedding_dim,
-        }
-
-    def get_summary(self):
-        return {
-            "model_name": self.model_name,
-            "embed_dim": self.embedding_dim,
+            "device": self.device,
         }
 
 
@@ -37,11 +28,6 @@ class MethodConfig(Config):
         self.method_name = None
 
     def get_configuration(self):
-        return {
-            "method_name": self.method_name,
-        }
-
-    def get_summary(self):
         return {
             "method_name": self.method_name,
         }
@@ -58,7 +44,7 @@ class OptimizerConfig(Config):
         self.exp_name = None
         self.save = False
         self.save_path = None
-        self.device = 'cpu'
+        self.device = "cpu"
         self.report_size = 100  # batch to report ratio
         self.threshold = 0.5
 
@@ -68,12 +54,10 @@ class OptimizerConfig(Config):
             "lr": self.lr,
             "batch_size": self.batch_size,
             "n_epoch": self.n_epoch,
-        }
-
-    def get_summary(self):
-        return {
-            "optimizer": self.optimizer,
-            "lr": self.lr,
-            "batch_size": self.batch_size,
-            "n_epoch": self.n_epoch,
+            "exp_name": self.exp_name,
+            "save": self.save,
+            "save_path": self.save_path,
+            "device": self.device,
+            "report_size": self.report_size,
+            "threshold": self.threshold,
         }
