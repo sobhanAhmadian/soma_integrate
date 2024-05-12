@@ -228,7 +228,7 @@ def evaluate_binary_classification(
         y_test (array-like): True labels of the test set.
         y_predict (array-like): Predicted labels of the test set.
         threshold (float): Threshold value for converting predicted probabilities to binary predictions.
-        mean_fpr_list (array-like, optional): List of mean false positive rates for ROC curve interpolation. 
+        mean_fpr_list (array-like, optional): List of mean false positive rates for ROC curve interpolation.
             Defaults to np.linspace(0, 1, 100).
 
     Returns:
@@ -239,15 +239,12 @@ def evaluate_binary_classification(
     result = Result()
 
     binary_predict = np.where(np.array(y_predict) >= threshold, 1, 0).tolist()
+    result.binary = binary_predict
 
     result.acc = accuracy_score(y_test, binary_predict)
-    result.f1 = f1_score(y_test, binary_predict, average="macro", zero_division=1)
-    result.recall = recall_score(
-        y_test, binary_predict, average="macro", zero_division=1
-    )
-    result.precision = precision_score(
-        y_test, binary_predict, average="macro", zero_division=1
-    )
+    result.f1 = f1_score(y_test, binary_predict, zero_division=1)
+    result.recall = recall_score(y_test, binary_predict, zero_division=1)
+    result.precision = precision_score(y_test, binary_predict, zero_division=1)
     result.mcc = matthews_corrcoef(y_test, binary_predict)
 
     # Calculate max F1 score
