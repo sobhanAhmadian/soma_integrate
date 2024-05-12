@@ -72,8 +72,6 @@ class Result:
             "Precision": self.precision,
             "MCC": self.mcc,
             "Max F1": self.max_f1,
-            "True Positive Rate": self.tpr,
-            "False Positive Rate": self.fpr,
         }
 
 
