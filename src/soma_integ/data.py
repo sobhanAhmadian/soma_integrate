@@ -32,6 +32,7 @@ class TrainTestSplitter(abc.ABC):
     def __init__(self, k: int, data: Data):
         self.k = k
         self.data = data
+        self.data_size = self.get_data_size()
         self.subsets = self.get_subsets()
 
     @abc.abstractmethod
@@ -48,6 +49,16 @@ class TrainTestSplitter(abc.ABC):
         logger.info("{:#^50}".format(f"  Splitting Fold {i + 1}   "))
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def get_data_size(self):
+        """
+        Get the size of the data. This will be used to calculate the size of the subsets.
+
+        Returns:
+            int: The size of the data.
+        """
+        raise NotImplementedError
+
     def get_subsets(self):
         """
         Generate subsets of data.
@@ -57,8 +68,8 @@ class TrainTestSplitter(abc.ABC):
                     represent the indices of the elements in the subset.
         """
         subsets = dict()
-        subset_size = int(len(self.data) / self.k)
-        remain = list(range(0, len(self.data)))
+        subset_size = int(self.data_size / self.k)
+        remain = list(range(0, self.data_size))
         for i in range(self.k - 1):
             subsets[i] = random.sample(remain, subset_size)
             remain = list(set(remain).difference(subsets[i]))
