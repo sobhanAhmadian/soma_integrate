@@ -74,7 +74,7 @@ class CrossValidationResult:
     Represents the result of cross-validation for evaluating a model's performance.
 
     Attributes:
-        result (Result): The aggregated result of all folds.
+        result (Result): The aggregated result of all folds. The tpr and fpr values are not aggregated.
         fold_results (list): List of individual fold results.
         is_result_calculated (bool): Indicates whether the result has been calculated.
 
@@ -125,8 +125,6 @@ class CrossValidationResult:
         self.result.precision = self.result.precision / k
         self.result.mcc = self.result.mcc / k
         self.result.max_f1 = self.result.max_f1 / k
-        self.result.fpr = self.result.fpr / k if self.result.fpr is not None else None
-        self.result.tpr = self.result.tpr / k if self.result.tpr is not None else None
 
     def _accumulate(self, test_result):
         """
@@ -144,13 +142,6 @@ class CrossValidationResult:
         self.result.precision += test_result.precision
         self.result.mcc += test_result.mcc
         self.result.max_f1 += test_result.max_f1
-
-        self.result.fpr = (
-            self.result.fpr + test_result.fpr if self.result.fpr is not None else test_result.fpr
-        )
-        self.result.tpr = (
-            self.result.tpr + test_result.tpr if self.result.tpr is not None else test_result.tpr
-        )
 
     def get_roc_curve(self, ax, mean_fpr=np.linspace(0, 1, 100)):
         """
@@ -170,10 +161,10 @@ class CrossValidationResult:
             viz = RocCurveDisplay(fpr=r.fpr, tpr=r.tpr, roc_auc=r.auc)
             interp_tpr = np.interp(mean_fpr, viz.fpr, viz.tpr)
             interp_tpr[0] = 0.0
-            
+
             tpr_list.append(interp_tpr)
             auc_list.append(viz.roc_auc)
-        
+
         tprs = np.array(tpr_list)
         aucs = np.array(auc_list)
 
