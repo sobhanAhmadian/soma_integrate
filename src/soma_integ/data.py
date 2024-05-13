@@ -131,10 +131,13 @@ class PytorchTrainTestSplitter(TrainTestSplitter):
             tuple: A tuple containing the train and test data objects.
 
         """
-        indices = set(range(0, len(self.data)))
+        indices = set(range(0, self.data_size))
         test_indices = list(self.subsets[i])
         train_indices = list(indices.difference(self.subsets[i]))
 
         train_data = PytorchData(self.data.X[train_indices], self.data.y[train_indices])
         test_data = PytorchData(self.data.X[test_indices], self.data.y[test_indices])
         return train_data, test_data
+
+    def get_data_size(self):
+        return self.data.X.shape[0]
