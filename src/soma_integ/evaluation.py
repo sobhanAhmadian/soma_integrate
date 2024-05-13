@@ -27,9 +27,8 @@ class Result:
         precision (float): The precision value.
         mcc (float): The Matthews Correlation Coefficient (MCC) value.
         max_f1 (float): The maximum F1 score value for different thresholds.
-        fpr_list (list): The list of False Positive Rate values for different thresholds.
-        tpr_list (list): The list of True Positive Rate values for different thresholds.
-        auc_list (list): The list of AUC values for different thresholds.
+        fpr (np.ndarray): The false positive rate values.
+        tpr (np.ndarray): The true positive rate values.
 
     Methods:
         get_result(): Returns the evaluation result as a dictionary.
@@ -47,9 +46,8 @@ class Result:
         self.precision = 0
         self.mcc = 0
         self.max_f1 = 0
-        self.fpr_list = []
-        self.tpr_list = []
-        self.auc_list = []
+        self.fpr = None
+        self.tpr = None
 
     def get_result(self):
         """
@@ -127,9 +125,8 @@ class CrossValidationResult:
         self.result.precision = self.result.precision / k
         self.result.mcc = self.result.mcc / k
         self.result.max_f1 = self.result.max_f1 / k
-        self.result.fpr_list = (np.array(self.result.fpr_list) / k).tolist()
-        self.result.tpr_list = (np.array(self.result.tpr_list) / k).tolist()
-        self.result.auc_list = (np.array(self.result.auc_list) / k).tolist()
+        self.result.fpr = self.result.fpr / k if self.result.fpr is not None else None
+        self.result.tpr = self.result.tpr / k if self.result.tpr is not None else None
 
     def _accumulate(self, test_result):
         """
@@ -148,35 +145,37 @@ class CrossValidationResult:
         self.result.mcc += test_result.mcc
         self.result.max_f1 += test_result.max_f1
 
-        self.result.fpr_list = (
-            (np.array(self.result.fpr_list) + np.array(test_result.fpr_list)).tolist()
-            if len(self.result.fpr_list) > 0
-            else test_result.fpr_list
+        self.result.fpr = (
+            self.result.fpr + test_result.fpr if self.result.fpr is not None else test_result.fpr
         )
-        self.result.tpr_list = (
-            (np.array(self.result.tpr_list) + np.array(test_result.tpr_list)).tolist()
-            if len(self.result.tpr_list) > 0
-            else test_result.tpr_list
-        )
-        self.result.auc_list = (
-            (np.array(self.result.auc_list) + np.array(test_result.auc_list)).tolist()
-            if len(self.result.auc_list) > 0
-            else test_result.auc_list
+        self.result.tpr = (
+            self.result.tpr + test_result.tpr if self.result.tpr is not None else test_result.tpr
         )
 
-    def get_roc_curve(self, ax):
+    def get_roc_curve(self, ax, mean_fpr=np.linspace(0, 1, 100)):
         """
         Plots the receiver operating characteristic (ROC) curve.
 
         Args:
             ax: The matplotlib axes object to plot on.
+            mean_fpr (array-like, optional): List of mean false positive rates for ROC curve interpolation.
+                Defaults to np.linspace(0, 1, 100).
         """
         if not self.is_result_calculated:
             self.calculate_cv_result()
 
-        tprs = [result.tpr_list for result in self.fold_results]
-        aucs = [result.auc_list for result in self.fold_results]
-        mean_fpr = self.result.fpr_list
+        tpr_list = []
+        auc_list = []
+        for r in self.fold_results:
+            viz = RocCurveDisplay(fpr=r.fpr, tpr=r.tpr, roc_auc=r.auc)
+            interp_tpr = np.interp(mean_fpr, viz.fpr, viz.tpr)
+            interp_tpr[0] = 0.0
+            
+            tpr_list.append(interp_tpr)
+            auc_list.append(viz.roc_auc)
+        
+        tprs = np.array(tpr_list)
+        aucs = np.array(auc_list)
 
         ax.plot(
             [0, 1], [0, 1], linestyle="--", lw=2, color="r", label="Random", alpha=0.8
@@ -215,9 +214,7 @@ class CrossValidationResult:
         ax.legend(loc="lower right")
 
 
-def evaluate_binary_classification(
-    y_test, y_predict, threshold, mean_fpr_list=np.linspace(0, 1, 100)
-):
+def evaluate_binary_classification(y_test, y_predict, threshold):
     """
     Calculate various evaluation metrics for binary classification predictions.
 
@@ -225,8 +222,6 @@ def evaluate_binary_classification(
         y_test (array-like): True labels of the test set.
         y_predict (array-like): Predicted labels of the test set.
         threshold (float): Threshold value for converting predicted probabilities to binary predictions.
-        mean_fpr_list (array-like, optional): List of mean false positive rates for ROC curve interpolation.
-            Defaults to np.linspace(0, 1, 100).
 
     Returns:
         Result: An object containing the calculated evaluation metrics.
@@ -256,14 +251,7 @@ def evaluate_binary_classification(
     # Calculate AUC, TPR, FPR
     fpr, tpr, _ = roc_curve(y_test, y_predict, pos_label=1)
     result.auc = auc(fpr, tpr)
-
-    # Calculate FPR, TPR and AUC Lists
-    viz = RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=result.auc)
-    interp_tpr = np.interp(mean_fpr_list, viz.fpr, viz.tpr)
-    interp_tpr[0] = 0.0
-
-    result.mean_fpr_list = [mean_fpr_list]
-    result.tpr_list = [interp_tpr]
-    result.auc_list = [viz.roc_auc]
+    result.fpr = fpr
+    result.tpr = tpr
 
     return result
