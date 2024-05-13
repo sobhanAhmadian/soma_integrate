@@ -56,13 +56,13 @@ def test_cross_validation_result_calculate_cv_result():
 def test_cross_validation_result_get_roc_curve():
     cv_result = CrossValidationResult()
     fold_result1 = Result()
-    fold_result1.fpr_list = [0.1, 0.2, 0.3]
-    fold_result1.tpr_list = [0.4, 0.5, 0.6]
-    fold_result1.auc_list = [0.7]
+    fold_result1.fpr = np.array([0.1, 0.2, 0.3])
+    fold_result1.tpr = np.array([0.4, 0.5, 0.6])
+    fold_result1.auc = 0.7
     fold_result2 = Result()
-    fold_result2.fpr_list = [0.2, 0.3, 0.4]
-    fold_result2.tpr_list = [0.5, 0.6, 0.7]
-    fold_result2.auc_list = [0.8]
+    fold_result2.fpr = np.array([0.2, 0.3, 0.4])
+    fold_result2.tpr = np.array([0.5, 0.6, 0.7])
+    fold_result2.auc = 0.8
 
     cv_result.add_fold_result(fold_result1)
     cv_result.add_fold_result(fold_result2)
