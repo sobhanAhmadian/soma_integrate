@@ -29,7 +29,8 @@ class TrainTestSplitter(abc.ABC):
         data (Data): data object.
     """
 
-    def __init__(self, k: int, data: Data):
+    def __init__(self, k: int, data: Data, seed=42):
+        self.rng = random.Random(seed)  # rng should be create before get_subsets
         self.k = k
         self.data = data
         self.data_size = self.get_data_size()
@@ -71,7 +72,7 @@ class TrainTestSplitter(abc.ABC):
         subset_size = int(self.data_size / self.k)
         remain = list(range(0, self.data_size))
         for i in range(self.k - 1):
-            subsets[i] = random.sample(remain, subset_size)
+            subsets[i] = self.rng.sample(remain, subset_size)
             remain = list(set(remain).difference(subsets[i]))
         subsets[self.k - 1] = remain
         return subsets
