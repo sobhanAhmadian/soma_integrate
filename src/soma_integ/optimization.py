@@ -166,13 +166,13 @@ def _batch_optimize(
 
 
 def _evaluate(model: ModelHandler, loader, config: OptimizerConfig):
-    model.classifier.eval()
+    model.model.eval()
     total_labels = []
     total_predictions = []
     total_loss = 0.0
     for data in loader:
         inputs, labels = data
-        outputs = model.predict(inputs)
+        outputs = model(inputs).detach()
         total_loss += config.criterion(outputs, labels).item()
         total_labels.extend(labels.cpu().numpy())
         total_predictions.extend(torch.sigmoid(outputs).cpu().numpy())
