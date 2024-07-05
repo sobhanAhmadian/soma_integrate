@@ -172,7 +172,7 @@ def _evaluate(model: ModelHandler, loader, config: OptimizerConfig):
     total_loss = 0.0
     for data in loader:
         inputs, labels = data
-        outputs = model(inputs).detach()
+        outputs = model.model(inputs).detach()
         total_loss += config.criterion(outputs, labels).item()
         total_labels.extend(labels.cpu().numpy())
         total_predictions.extend(torch.sigmoid(outputs).cpu().numpy())
